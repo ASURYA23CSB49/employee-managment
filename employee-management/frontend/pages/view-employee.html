@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>View Employee - Employee Management</title>
+  <link rel="stylesheet" href="../css/styles.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+</head>
+<body>
+<div id="app"></div>
+<script src="../js/app.js"></script>
+<script src="../js/layout.js"></script>
+<script>
+document.getElementById('app').innerHTML = renderLayout('View Employee', 'employees') + `
+  <div class="page-header">
+    <div>
+      <h2>Employee Details</h2>
+      <p class="breadcrumb">Employees &rsaquo; View</p>
+    </div>
+    <a href="employees.html" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Back to List</a>
+  </div>
+  <div id="empContainer">
+    <div class="loading"><div class="spinner"></div> Loading employee...</div>
+  </div>
+` + closeLayout();
+
+const empId = new URLSearchParams(window.location.search).get('id');
+if (!empId) window.location.href = 'employees.html';
+
+(async function load() {
+  try {
+    const e = await api.getEmployee(empId);
+    document.getElementById('empContainer').innerHTML = `
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:1.25rem;margin-bottom:1.5rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border)">
+          <div class="avatar" style="width:64px;height:64px;font-size:1.5rem;flex-shrink:0">${e.name.charAt(0)}</div>
+          <div>
+            <h3 style="font-size:1.25rem;font-weight:700">${e.name}</h3>
+            <p style="color:var(--text-light);font-size:0.875rem">${e.designation}</p>
+            <span class="badge badge-${getDeptBadgeClass(e.department)}" style="margin-top:0.375rem;display:inline-block">${e.department}</span>
+          </div>
+          <div style="margin-left:auto;display:flex;gap:0.5rem">
+            <a href="edit-employee.html?id=${e.id}" class="btn btn-primary btn-sm"><i class="fas fa-edit"></i> Edit</a>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.25rem">
+          ${detail('id-badge','Employee ID','#','#' + e.id,'blue')}
+          ${detail('envelope','Email','mailto:'+e.email, e.email,'purple')}
+          ${detail('phone','Phone',null, e.phoneNumber,'green')}
+          ${detail('dollar-sign','Salary',null, formatCurrency(e.salary),'orange')}
+          ${detail('calendar-plus','Joined',null, formatDate(e.createdAt),'blue')}
+          ${detail('clock','Last Updated',null, formatDate(e.updatedAt),'purple')}
+        </div>
+      </div>`;
+  } catch(err) {
+    document.getElementById('empContainer').innerHTML =
+      `<div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> ${err.message}</div>`;
+  }
+})();
+
+function detail(icon, label, href, value, color) {
+  const val = href ? `<a href="${href}" style="color:var(--primary);text-decoration:none">${value}</a>` : value;
+  return `
+    <div style="display:flex;align-items:flex-start;gap:0.875rem">
+      <div class="stat-icon ${color}" style="width:40px;height:40px;font-size:1rem;flex-shrink:0">
+        <i class="fas fa-${icon}"></i>
+      </div>
+      <div>
+        <p style="font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.05em">${label}</p>
+        <p style="font-weight:500;margin-top:0.2rem">${val}</p>
+      </div>
+    </div>`;
+}
+</script>
+</body>
+</html>

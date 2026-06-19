@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Employees - Employee Management</title>
+  <link rel="stylesheet" href="../css/styles.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+</head>
+<body>
+<div id="app"></div>
+<script src="../js/app.js"></script>
+<script src="../js/layout.js"></script>
+<script>
+document.getElementById('app').innerHTML = renderLayout('Employee List', 'employees') + `
+  <div id="alertBox"></div>
+  <div class="card">
+    <div class="toolbar">
+      <div class="search-box">
+        <i class="fas fa-search"></i>
+        <input type="text" id="searchInput" placeholder="Search by name or email..." />
+      </div>
+      <a href="add-employee.html" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Add Employee
+      </a>
+    </div>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Department</th>
+            <th>Designation</th>
+            <th>Salary</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="empTableBody">
+          <tr><td colspan="8"><div class="loading"><div class="spinner"></div> Loading...</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="tableFooter" style="margin-top:0.75rem;font-size:0.8rem;color:var(--text-light)"></div>
+  </div>
+
+  <!-- Delete Confirm Modal -->
+  <div class="modal-overlay" id="deleteModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3><i class="fas fa-trash" style="color:var(--danger)"></i> Confirm Delete</h3>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <p>Are you sure you want to delete <strong id="deleteEmpName"></strong>? This action cannot be undone.</p>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-danger" id="confirmDeleteBtn" data-original="Delete">
+          <i class="fas fa-trash"></i> Delete
+        </button>
+      </div>
+    </div>
+  </div>
+` + closeLayout();
+
+let allEmployees = [];
+let deleteTargetId = null;
+
+function renderTable(employees) {
+  const tbody = document.getElementById('empTableBody');
+  const footer = document.getElementById('tableFooter');
+
+  if (!employees.length) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-light)"><i class="fas fa-users" style="font-size:2rem;display:block;margin-bottom:0.5rem"></i>No employees found</td></tr>`;
+    footer.textContent = '';
+    return;
+  }
+
+  tbody.innerHTML = employees.map((e, i) => `
+    <tr>
+      <td style="color:var(--text-light);font-size:0.8rem">${i + 1}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:0.625rem">
+          <div class="avatar" style="width:32px;height:32px;font-size:0.75rem;flex-shrink:0">${e.name.charAt(0)}</div>
+          <span style="font-weight:500">${e.name}</span>
+        </div>
+      </td>
+      <td style="color:var(--text-light)">${e.email}</td>
+      <td>${e.phoneNumber}</td>
+      <td><span class="badge badge-${getDeptBadgeClass(e.department)}">${e.department}</span></td>
+      <td>${e.designation}</td>
+      <td style="font-weight:500">${formatCurrency(e.salary)}</td>
+      <td>
+        <div style="display:flex;gap:0.5rem">
+          <a href="view-employee.html?id=${e.id}" class="btn btn-outline btn-sm" title="View">
+            <i class="fas fa-eye"></i>
+          </a>
+          <a href="edit-employee.html?id=${e.id}" class="btn btn-primary btn-sm" title="Edit">
+            <i class="fas fa-edit"></i>
+          </a>
+          <button class="btn btn-danger btn-sm" onclick="confirmDelete(${e.id}, '${e.name.replace(/'/g,"\\'")}'')" title="Delete">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+      </td>
+    </tr>`).join('');
+
+  footer.textContent = `Showing ${employees.length} employee${employees.length !== 1 ? 's' : ''}`;
+}
+
+async function loadEmployees(query = '') {
+  try {
+    allEmployees = await api.getEmployees(query);
+    renderTable(allEmployees);
+  } catch(err) {
+    document.getElementById('empTableBody').innerHTML =
+      `<tr><td colspan="8"><div class="alert alert-error"><i class="fas fa-exclamation-circle"></i> ${err.message}</div></td></tr>`;
+  }
+}
+
+function confirmDelete(id, name) {
+  deleteTargetId = id;
+  document.getElementById('deleteEmpName').textContent = name;
+  document.getElementById('deleteModal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('deleteModal').classList.remove('show');
+  deleteTargetId = null;
+}
+
+document.getElementById('confirmDeleteBtn').addEventListener('click', async function() {
+  if (!deleteTargetId) return;
+  setLoading(this, true);
+  try {
+    await api.deleteEmployee(deleteTargetId);
+    closeModal();
+    showAlert(document.getElementById('alertBox'), 'Employee deleted successfully', 'success');
+    await loadEmployees();
+  } catch(err) {
+    showAlert(document.getElementById('alertBox'), err.message, 'error');
+    setLoading(this, false);
+  }
+});
+
+let searchTimer;
+document.getElementById('searchInput').addEventListener('input', function() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => loadEmployees(this.value.trim()), 400);
+});
+
+loadEmployees();
+</script>
+</body>
+</html>
